@@ -20,7 +20,7 @@ void LineBackgroundPainter::resetConfig()
 	XOJ_CHECK_TYPE(LineBackgroundPainter);
 
 	this->foregroundColor1 = 0x40A0FF;
-	this->foregroundColor2 = 0xFF0080;
+	this->foregroundColor2 = 0x5D5D5D;
 	this->lineWidth = 0.5;
 }
 
@@ -38,7 +38,7 @@ void LineBackgroundPainter::paint()
 	}
 }
 
-const double roulingSize = 24;
+const double roulingSize = 40;
 
 void LineBackgroundPainter::paintBackgroundRuled()
 {
@@ -47,7 +47,18 @@ void LineBackgroundPainter::paintBackgroundRuled()
 	Util::cairo_set_source_rgbi(cr, this->foregroundColor1);
 	cairo_set_line_width(cr, lineWidth * lineWidthFactor);
 
-	for (double y = 80; y < height; y += roulingSize)
+	for (double y = 20; y < height; y += roulingSize)
+	{
+		cairo_move_to(cr, 0, y);
+		cairo_line_to(cr, width, y);
+	}
+
+	cairo_stroke(cr);
+
+	Util::cairo_set_source_rgbi(cr, this->foregroundColor2);
+	cairo_set_line_width(cr, lineWidth * lineWidthFactor);
+
+	for (double y = 40; y < height; y += roulingSize)
 	{
 		cairo_move_to(cr, 0, y);
 		cairo_line_to(cr, width, y);
