@@ -46,7 +46,7 @@ void SidebarPreviewLayers::actionPerformed(SidebarActions action)
 		control->getLayerController()->moveCurrentLayer(true);
 		break;
 	}
-	case SIDEBAR_ACTION_MODE_DOWN:
+	case SIDEBAR_ACTION_MOVE_DOWN:
 	{
 		control->getLayerController()->moveCurrentLayer(false);
 		break;
@@ -129,7 +129,7 @@ void SidebarPreviewLayers::updatePreviews()
 		delete p;
 	}
 	this->previews.clear();
-	this->selectedEntry = size_t_npos;
+	this->selectedEntry = npos;
 
 	PageRef page = lc->getCurrentPage();
 	if (!page.isValid())
@@ -191,13 +191,13 @@ void SidebarPreviewLayers::updateSelectedLayer()
 		return;
 	}
 
-	if (this->selectedEntry != size_t_npos && this->selectedEntry < this->previews.size())
+	if (this->selectedEntry != npos && this->selectedEntry < this->previews.size())
 	{
 		this->previews[this->selectedEntry]->setSelected(false);
 	}
 
 	this->selectedEntry = layerIndex;
-	if (this->selectedEntry != size_t_npos && this->selectedEntry < this->previews.size())
+	if (this->selectedEntry != npos && this->selectedEntry < this->previews.size())
 	{
 		SidebarPreviewBaseEntry* p = this->previews[this->selectedEntry];
 		p->setSelected(true);
@@ -214,7 +214,7 @@ void SidebarPreviewLayers::updateSelectedLayer()
 	// Background and first layer cannot be moved down
 	if (this->selectedEntry < (this->previews.size() - 2))
 	{
-		actions |= SIDEBAR_ACTION_MODE_DOWN;
+		actions |= SIDEBAR_ACTION_MOVE_DOWN;
 	}
 
 	// Background cannot be copied

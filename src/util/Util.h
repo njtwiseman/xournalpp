@@ -11,48 +11,57 @@
 
 #pragma once
 
+#include "OutputStream.h"
 #include "Path.h"
 
 #include <gtk/gtk.h>
 
 #include <string>
+#include <functional>
+#include <limits>
+#include <cstdint>
+
 using std::string;
 
-#include <functional>
-
-
-class Util
+namespace Util
 {
-private:
-	Util();
-	virtual ~Util();
 
-public:
-	static void cairo_set_source_rgbi(cairo_t* cr, int color);
+void cairo_set_source_rgbi(cairo_t* cr, int color);
 
-	static void apply_rgb_togdkrgba(GdkRGBA& col, int color);
-	static int gdkrgba_to_hex(GdkRGBA& color);
+GdkRGBA rgb_to_GdkRGBA(uint32_t color);
+uint32_t gdkrgba_to_hex(const GdkRGBA& color);
 
-	static Path getAutosaveFilename();
+Path getAutosaveFilename();
 
-	static int getPid();
+pid_t getPid();
 
-	static void openFileWithDefaultApplicaion(Path filename);
-	static void openFileWithFilebrowser(Path filename);
-	
-	static Path getConfigSubfolder(Path subfolder = "");
-	static Path getConfigFile(Path relativeFileName = "");
+void openFileWithDefaultApplicaion(const Path& filename);
+void openFileWithFilebrowser(const Path& filename);
 
-	/**
+Path getConfigSubfolder(const Path& subfolder = "");
+Path getConfigFile(const Path& relativeFileName = "");
+
+Path getTmpDirSubfolder(const Path& subfolder = "");
+
+Path ensureFolderExists(const Path& p);
+
+/**
 	 * Execute the callback in the UI Thread.
 	 *
 	 * Make sure the container class is not deleted before the UI stuff is finished!
 	 */
-	static void execInUiThread(std::function<void()> callback);
+void execInUiThread(std::function<void()>&& callback);
 
-	static gboolean paintBackgroundWhite(GtkWidget* widget, cairo_t* cr, void* unused);
+gboolean paintBackgroundWhite(GtkWidget* widget, cairo_t* cr, void* unused);
 
-};
+/**
+ * Format coordinates to use 8 digits of precision https://m.xkcd.com/2170/
+ * This function directy writes to the given OutputStream.
+ */
+extern void writeCoordinateString(OutputStream* out, double xVal, double yVal);
 
-static const size_t size_t_npos = static_cast<size_t>(-1);
-// for 64b systems it's 18446744073709551615 and for 32b – 4294967295
+constexpr const gchar* PRECISION_FORMAT_STRING = "%.8f";
+
+}  // namespace Util
+
+static const size_t npos = std::numeric_limits<size_t>::max();

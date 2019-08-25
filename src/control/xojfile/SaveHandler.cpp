@@ -1,6 +1,7 @@
 #include "SaveHandler.h"
 
 #include "control/jobs/ProgressListener.h"
+#include "control/pagetype/PageTypeHandler.h"
 #include "control/xml/XmlNode.h"
 #include "control/xml/XmlTextNode.h"
 #include "control/xml/XmlImageNode.h"
@@ -356,11 +357,11 @@ void SaveHandler::writeSolidBackground(XmlNode* background, PageRef p)
 	background->setAttrib("type", "solid");
 	background->setAttrib("color", getColorStr(p->getBackgroundColor()));
 
-	background->setAttrib("style", p->getBackgroundType().format);
+	background->setAttrib("style", PageTypeHandler::getStringForPageTypeFormat(p->getBackgroundType().format));
 
 	// Not compatible with Xournal, so the background needs
 	// to be changed to a basic one!
-	if (p->getBackgroundType().config != "")
+	if (!p->getBackgroundType().config.empty())
 	{
 		background->setAttrib("config", p->getBackgroundType().config);
 	}
@@ -390,12 +391,7 @@ void SaveHandler::saveTo(OutputStream* out, Path filename, ProgressListener* lis
 {
 	XOJ_CHECK_TYPE(SaveHandler);
 
-	char* old_locale, *saved_locale;
-
-	old_locale = setlocale(LC_NUMERIC, NULL);
-	saved_locale = g_strdup(old_locale);
-
-	setlocale(LC_NUMERIC, "C");
+	// XMLNode should be locale-safe ( store doubles using Locale 'C' format
 
 	out->write("<?xml version=\"1.0\" standalone=\"no\"?>\n");
 	root->writeOut(out, listener);
@@ -416,8 +412,6 @@ void SaveHandler::saveTo(OutputStream* out, Path filename, ProgressListener* lis
 		}
 	}
 
-	setlocale(LC_NUMERIC, saved_locale);
-	g_free(saved_locale);
 }
 
 string SaveHandler::getErrorMessage()

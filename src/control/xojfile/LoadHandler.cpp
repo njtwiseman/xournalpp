@@ -4,6 +4,7 @@
 #include "model/BackgroundImage.h"
 #include "model/StrokeStyle.h"
 #include "LoadHandlerHelper.h"
+#include "control/pagetype/PageTypeHandler.h"
 
 #include <config.h>
 #include <GzUtil.h>
@@ -58,6 +59,10 @@ LoadHandler::LoadHandler()
 LoadHandler::~LoadHandler()
 {
 	XOJ_RELEASE_TYPE(LoadHandler);
+	if (this->audioFiles)
+	{
+		g_hash_table_unref(this->audioFiles);
+	}
 }
 
 void LoadHandler::initAttributes()
@@ -293,6 +298,11 @@ bool LoadHandler::parseXml()
 		lastError = _("Document is not complete (maybe the end is cut off?)");
 		return false;
 	}
+	else if (this->pos == PASER_POS_FINISHED && this->doc.getPageCount() == 0)
+	{
+		lastError = _("Document is corrupted (no pages found in file)");
+		return false;
+	}
 
 	doc.setCreateBackupOnSave(this->fileVersion >= 3);
 
@@ -392,7 +402,7 @@ void LoadHandler::parseBgSolid()
 	const char* style = LoadHandlerHelper::getAttrib("style", false, this);
 	if (style != NULL)
 	{
-		bg.format = style;
+		bg.format = PageTypeHandler::getPageTypeFormatForString(style);
 	}
 
 	const char* config = LoadHandlerHelper::getAttrib("config", true, this);
@@ -482,7 +492,7 @@ void LoadHandler::parseBgPixmap()
 		error("%s", FC(_F("Unknown pixmap::domain type: {1}") % domain));
 	}
 
-	this->page->setBackgroundType(PageType(":image"));
+	this->page->setBackgroundType(PageType(PageTypeFormat::Image));
 }
 
 void LoadHandler::parseBgPdf()
@@ -621,7 +631,7 @@ void LoadHandler::parsePage()
 		{
 			if (this->removePdfBackgroundFlag)
 			{
-				this->page->setBackgroundType(PageType("plain"));
+				this->page->setBackgroundType(PageType(PageTypeFormat::Plain));
 				this->page->setBackgroundColor(0xffffff);
 			}
 			else
@@ -689,7 +699,7 @@ void LoadHandler::parseStroke()
 
 	/** read stroke timestamps (xopp fileformat) */
 	const char* fn = LoadHandlerHelper::getAttrib("fn", true, this);
-	if (fn != NULL)
+	if (fn != NULL && strlen(fn) > 0)
 	{
 		if (this->isGzFile)
 		{
@@ -791,7 +801,7 @@ void LoadHandler::parseText()
 	text->setColor(color);
 
 	const char* fn = LoadHandlerHelper::getAttrib("fn", true, this);
-	if (fn != NULL)
+	if (fn != NULL && strlen(fn) > 0)
 	{
 		if (this->isGzFile)
 		{

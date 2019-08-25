@@ -1,3 +1,4 @@
+#include "Util.h"
 #include "XmlStrokeNode.h"
 
 XmlStrokeNode::XmlStrokeNode(const char* tag) : XmlNode(tag)
@@ -65,15 +66,17 @@ void XmlStrokeNode::writeOut(OutputStream* out)
 	writeAttributes(out);
 
 	out->write(" width=\"");
-	char* tmp = g_strdup_printf("%1.2lf", width);
-	out->write(tmp);
-	g_free(tmp);
+
+	char widthStr[G_ASCII_DTOSTR_BUF_SIZE];
+	// g_ascii_ version uses C locale always.
+	g_ascii_formatd(widthStr, G_ASCII_DTOSTR_BUF_SIZE, Util::PRECISION_FORMAT_STRING, width);
+	out->write(widthStr);
 
 	for (int i = 0; i < widthsLength; i++)
 	{
-		char* tmp = g_strdup_printf(" %1.2lf", widths[i]);
-		out->write(tmp);
-		g_free(tmp);
+		g_ascii_formatd(widthStr, G_ASCII_DTOSTR_BUF_SIZE, Util::PRECISION_FORMAT_STRING, widths[i]);
+		out->write(" ");
+		out->write(widthStr);
 	}
 
 	out->write("\"");
@@ -86,15 +89,12 @@ void XmlStrokeNode::writeOut(OutputStream* out)
 	{
 		out->write(">");
 
-		char* tmp = g_strdup_printf("%1.2lf %1.2lf", points[0].x, points[0].y);
-		out->write(tmp);
-		g_free(tmp);
+		Util::writeCoordinateString(out, points[0].x, points[0].y);
 
 		for (int i = 1; i < this->pointsLength; i++)
 		{
-			char* tmp = g_strdup_printf(" %1.2lf %1.2lf", points[i].x, points[i].y);
-			out->write(tmp);
-			g_free(tmp);
+			out->write(" ");
+			Util::writeCoordinateString(out, points[i].x, points[i].y);
 		}
 
 		out->write("</");

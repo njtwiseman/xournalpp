@@ -3,7 +3,10 @@ cmake_minimum_required (VERSION 2.8.8)
 project ("Xournal++" CXX C)
 
 ## Also update changelog in debian folder!
-set (PROJECT_VERSION "1.0.11")
+set (CPACK_PACKAGE_VERSION_MAJOR "1")
+set (CPACK_PACKAGE_VERSION_MINOR "0")
+set (CPACK_PACKAGE_VERSION_PATCH "13")
+set (PROJECT_VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
 set (PROJECT_PACKAGE "xournalpp")
 set (PROJECT_STRING "${PROJECT_NAME} ${PROJECT_VERSION}")
 set (PROJECT_URL "https://github.com/xournalpp/xournalpp")
@@ -18,6 +21,8 @@ include (Version)
 core_find_git_rev(RELEASE_IDENTIFIER)
 string(TIMESTAMP PACKAGE_TIMESTAMP "%Y%m%d.%H%M" UTC)
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION}~git${PACKAGE_TIMESTAMP}-${RELEASE_IDENTIFIER}-${DISTRO_CODENAME})
+
+configure_file(cmake/VERSION.in VERSION)
 
 configure_file (
     cmake/postinst.in
@@ -57,17 +62,19 @@ endif ()
 ## Libraries ##
 
 macro (add_includes_ldflags LDFLAGS INCLUDES)
-    set (xournalpp_LDFLAGS ${xournalpp_LDFLAGS} ${LDFLAGS})
-    set (xournalpp_INCLUDE_DIRS ${xournalpp_INCLUDE_DIRS} ${INCLUDES})
+    set (xournalpp_LDFLAGS ${xournalpp_LDFLAGS} "${LDFLAGS}")
+    set (xournalpp_INCLUDE_DIRS ${xournalpp_INCLUDE_DIRS} "${INCLUDES}")
 endmacro (add_includes_ldflags LDFLAGS INCLUDES)
-
-# GTK+
-pkg_check_modules (GTK REQUIRED "gtk+-3.0 >= 3.18.9")
-add_includes_ldflags ("${GTK_LDFLAGS}" "${GTK_INCLUDE_DIRS}")
 
 # GLIB
 pkg_check_modules (Glib REQUIRED "glib-2.0 >= 2.32.0")
+add_definitions (-DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_32)
 add_includes_ldflags ("${Glib_LDFLAGS}" "${Glib_INCLUDE_DIRS}")
+
+# GTK+
+pkg_check_modules (GTK REQUIRED "gtk+-3.0 >= 3.18.9")
+add_definitions (-DGDK_VERSION_MIN_REQUIRED=GDK_VERSION_3_18)
+add_includes_ldflags ("${GTK_LDFLAGS}" "${GTK_INCLUDE_DIRS}")
 
 # GThread
 pkg_check_modules (GThread REQUIRED "gthread-2.0 >= 2.4.0")
@@ -88,7 +95,7 @@ add_includes_ldflags ("${ZLIB_LIBRARIES}" "${ZLIB_INCLUDE_DIRS}")
 
 # libzip
 pkg_check_modules (ZIP REQUIRED "libzip >= 1.0.1")
-add_includes_ldflags ("${ZIP_LIBRARIES}" "${ZIP_INCLUDE_DIRS}")
+add_includes_ldflags ("${ZIP_LDFLAGS}" "${ZIP_INCLUDE_DIRS}")
 
 # pthreads
 find_package (Threads REQUIRED)
@@ -101,7 +108,6 @@ add_includes_ldflags ("${PORTAUDIOCPP_LDFLAGS}" "${PORTAUDIOCPP_INCLUDE_DIRS}")
 # sndfile
 pkg_check_modules(SNDFILE REQUIRED "sndfile >= 1.0.25")
 add_includes_ldflags ("${SNDFILE_LDFLAGS}" "${SNDFILE_INCLUDE_DIRS}")
-
 
 ## Additional features ##
 
@@ -132,6 +138,14 @@ if (Lua_FOUND)
 	set (ENABLE_PLUGINS "true")
 endif ()
 
+#
+# DO NOT INCLUDE LIBRARIES WITH pkg_check_modules AFTER THIS LINE!!!
+#
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    # Fix linker flag handling for MacOS builds where frameworks are separated from their flag
+    string(REPLACE "-framework;" "-framework " xournalpp_LDFLAGS "${xournalpp_LDFLAGS}")
+endif()
+
 configure_file (
   src/config-features.h.in
   src/config-features.h
@@ -150,6 +164,8 @@ option (DEV_CALL_LOG "Call log" OFF)
 
 # Debug options
 option (DEBUG_INPUT "Input debugging, e.g. eraser events etc" OFF)
+option (DEBUG_INPUT_PRINT_ALL_MOTION_EVENTS "Input debugging, print all motion events" OFF)
+option (DEBUG_INPUT_GDK_PRINT_EVENTS "Input debugging, print all GDK events" OFF)
 option (DEBUG_RECOGNIZER "Shape recognizer debug: output score etc" OFF)
 option (DEBUG_SHEDULER "Scheduler debug: show jobs etc" OFF)
 option (DEBUG_SHOW_ELEMENT_BOUNDS "Draw a surrounding border to all elements" OFF)
@@ -221,11 +237,9 @@ install (DIRECTORY plugins
 # Install desktop shortcuts for Linux
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	message ("Installing desktop files")
-	# Install desktop entry
-	#install(FILES data/albert.desktop DESTINATION /share/applications )
 
 	# Install icons
-	install(FILES ui/pixmaps/xournalpp.svg
+	install(FILES ui/pixmaps/com.github.xournalpp.xournalpp.svg
 			DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/scalable/apps)
 
 	# Symlink are not easy to use with CMake, therefor simple install a copy...
@@ -241,9 +255,9 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	install(FILES ui/pixmaps/gnome-mime-application-x-xopt.svg
 			DESTINATION ${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/scalable/mimetypes/)
 
-	install(FILES desktop/xournalpp.xml
+	install(FILES desktop/com.github.xournalpp.xournalpp.xml
 			DESTINATION ${CMAKE_INSTALL_PREFIX}/share/mime/packages)
-	install(FILES desktop/xournalpp.desktop
+	install(FILES desktop/com.github.xournalpp.xournalpp.desktop
 			DESTINATION ${CMAKE_INSTALL_PREFIX}/share/applications)
 	install(FILES desktop/x-xojpp.desktop
 			DESTINATION ${CMAKE_INSTALL_PREFIX}/share/mimelnk/application)
@@ -252,10 +266,16 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	install(FILES desktop/x-xopt.desktop
 			DESTINATION ${CMAKE_INSTALL_PREFIX}/share/mimelnk/application)
 
-	install(FILES desktop/xournalpp.thumbnailer
+	install(FILES desktop/com.github.xournalpp.xournalpp.thumbnailer
 			DESTINATION ${CMAKE_INSTALL_PREFIX}/share/thumbnailers)
 
-	install(CODE "execute_process(COMMAND ${CMAKE_CURRENT_BINARY_DIR}/cmake/postinst configure)")
+	install(FILES desktop/com.github.xournalpp.xournalpp.appdata.xml
+			DESTINATION ${CMAKE_INSTALL_PREFIX}/share/metainfo)
+
+	# TODO: Only package post install scripts with distro-specific packages
+	# Also update manual install instructions
+
+	# install(CODE "execute_process(COMMAND ${CMAKE_CURRENT_BINARY_DIR}/cmake/postinst configure)")
 
 endif ()
 
@@ -284,3 +304,17 @@ if (CMAKE_DEBUG_INCLUDES_LDFLAGS)
     message ("Include directories: ${xournalpp_INCLUDE_DIRS}")
     message ("LDFLAGS/LIBRARIES: ${xournalpp_LDFLAGS}")
 endif (CMAKE_DEBUG_INCLUDES_LDFLAGS)
+
+
+# Packaging options
+set (CPACK_OUTPUT_FILE_PREFIX packages)
+set (CPACK_PACKAGE_DESCRIPTION_SUMMARY "Xournal++ - Open source hand note-taking program")
+set (CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
+set (CPACK_GENERATOR "TGZ")
+set (CPACK_PACKAGE_INSTALL_DIRECTORY "Xournal++")
+
+include(TargetArch)
+target_architecture(PACKAGE_ARCH)
+set (CPACK_PACKAGE_FILE_NAME "xournalpp-${PROJECT_VERSION}-${DISTRO_NAME}-${DISTRO_CODENAME}-${PACKAGE_ARCH}")
+
+include (CPack)

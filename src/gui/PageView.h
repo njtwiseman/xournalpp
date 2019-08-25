@@ -20,7 +20,7 @@
 
 #include <Range.h>
 
-#include "inputdevices/PositionInputData.h"
+#include "gui/inputdevices/PositionInputData.h"
 
 class EditSelection;
 class EraseHandler;
@@ -149,6 +149,8 @@ public:
 public: // event handler
 	bool onButtonPressEvent(const PositionInputData& pos);
 	bool onButtonReleaseEvent(const PositionInputData& pos);
+	bool onButtonDoublePressEvent(const PositionInputData& pos);
+	bool onButtonTriplePressEvent(const PositionInputData& pos);
 	bool onMotionNotifyEvent(const PositionInputData& pos);
 
 	/**
@@ -191,7 +193,7 @@ private:
 	PageRef page;
 	XournalView* xournal;
 	Settings* settings;
-	EraseHandler* eraser;
+	EraseHandler* eraser = nullptr;
 	InputHandler* inputHandler = nullptr;
 
 	/**
@@ -249,5 +251,6 @@ private:
 	friend class BaseSelectObject;
 	friend class SelectObject;
 	friend class PlayObject;
-	friend void Layout::layoutPages();	//only function allowed to setX(), setY(), setMappedRowCol()
+	//only function allowed to setX(), setY(), setMappedRowCol():
+	friend void Layout::layoutPages(int width, int height);
 };

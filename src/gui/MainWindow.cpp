@@ -29,6 +29,8 @@
 #endif
 
 #include <gdk/gdk.h>
+#include <util/DeviceListHelper.h>
+#include <gui/inputdevices/InputEvents.h>
 
 MainWindow::MainWindow(GladeSearchpath* gladeSearchPath, Control* control)
  : GladeGui(gladeSearchPath, "main.glade", "mainWindow"),
@@ -40,6 +42,12 @@ MainWindow::MainWindow(GladeSearchpath* gladeSearchPath, Control* control)
 	this->toolbarWidgets = new GtkWidget*[TOOLBAR_DEFINITIONS_LEN];
 	this->toolbarSelectMenu = new MainWindowToolbarMenu(this);
 
+	loadMainCSS(gladeSearchPath,"xournalpp.css");
+	
+	GtkOverlay *overlay = GTK_OVERLAY (get("mainOverlay"));
+	this->floatingToolbox = new FloatingToolbox (this, overlay);  
+
+		
 	for (int i = 0; i < TOOLBAR_DEFINITIONS_LEN; i++)
 	{
 		GtkWidget* w = get(TOOLBAR_DEFINITIONS[i].guiName);
@@ -53,10 +61,10 @@ MainWindow::MainWindow(GladeSearchpath* gladeSearchPath, Control* control)
 
 	// Window handler
 	g_signal_connect(this->window, "delete-event", G_CALLBACK(deleteEventCallback), this->control);
-	g_signal_connect(this->window, "configure-event", G_CALLBACK(configureEventCallback), this->control);
 	g_signal_connect(this->window, "window_state_event", G_CALLBACK(windowStateEventCallback), this);
 
 	g_signal_connect(get("buttonCloseSidebar"), "clicked", G_CALLBACK(buttonCloseSidebarClicked), this);
+		
 
 	// "watch over" all events
 	g_signal_connect(this->window, "key-press-event", G_CALLBACK(onKeyPressCallback), this);
@@ -163,6 +171,9 @@ MainWindow::~MainWindow()
 	delete this->toolbarSelectMenu;
 	this->toolbarSelectMenu = NULL;
 
+	delete this->floatingToolbox;
+	this->floatingToolbox = NULL;
+	
 	delete this->xournal;
 	this->xournal = NULL;
 
@@ -222,21 +233,26 @@ void MainWindow::initXournalWidget()
 
 		scrollHandling = new ScrollHandlingXournalpp();
 
-		this->xournal = new XournalView(box2, control, scrollHandling);
+		this->zoomGesture = new ZoomGesture(control->getZoomControl());
+
+		this->xournal = new XournalView(box2, control, scrollHandling, zoomGesture);
 
 		if (control->getSettings()->isZoomGesturesEnabled())
 		{
-			this->zoomGesture = new ZoomGesture(this->xournal->getWidget(), control->getZoomControl());
+			this->zoomGesture->connect(this->xournal->getWidget());
 		}
 
 		gtk_container_add(GTK_CONTAINER(box2), gtk_scrollbar_new(GTK_ORIENTATION_VERTICAL, scrollHandling->getVertical()));
 		gtk_container_add(GTK_CONTAINER(box1), gtk_scrollbar_new(GTK_ORIENTATION_HORIZONTAL, scrollHandling->getHorizontal()));
 
+		control->getZoomControl()->initZoomHandler(box2, xournal, control);
 		gtk_widget_show_all(box1);
 	}
 	else
 	{
 		winXournal = gtk_scrolled_window_new(NULL, NULL);
+
+		setTouchscreenScrollingForDeviceMapping();
 
 		gtk_container_add(GTK_CONTAINER(boxContents), winXournal);
 
@@ -246,18 +262,38 @@ void MainWindow::initXournalWidget()
 
 		scrollHandling = new ScrollHandlingGtk(GTK_SCROLLABLE(vpXournal));
 
-		this->xournal = new XournalView(vpXournal, control, scrollHandling);
+		this->zoomGesture = new ZoomGesture(control->getZoomControl());
+
+		this->xournal = new XournalView(vpXournal, control, scrollHandling, zoomGesture);
 
 		if (control->getSettings()->isZoomGesturesEnabled())
 		{
-			this->zoomGesture = new ZoomGesture(winXournal, control->getZoomControl());
+			this->zoomGesture->connect(winXournal);
 		}
 
+		control->getZoomControl()->initZoomHandler(winXournal, xournal, control);
 		gtk_widget_show_all(winXournal);
 	}
+	//Todo configure-event
 
 	Layout* layout = gtk_xournal_get_layout(this->xournal->getWidget());
 	scrollHandling->init(this->xournal->getWidget(), layout);
+}
+
+void MainWindow::setTouchscreenScrollingForDeviceMapping()
+{
+	XOJ_CHECK_TYPE(MainWindow);
+
+	for (InputDevice const& inputDevice: DeviceListHelper::getDeviceList(this->getControl()->getSettings()))
+	{
+		InputDeviceClass deviceClass = InputEvents::translateDeviceType(inputDevice.getName(), inputDevice.getSource(),
+		                                                                this->getControl()->getSettings());
+		if (inputDevice.getSource() == GDK_SOURCE_TOUCHSCREEN && deviceClass != INPUT_DEVICE_TOUCHSCREEN)
+		{
+			gtk_scrolled_window_set_kinetic_scrolling(GTK_SCROLLED_WINDOW(winXournal), false);
+			break;
+		}
+	}
 }
 
 /**
@@ -341,6 +377,7 @@ bool cancellable_cancel(GCancellable* cancel)
 void MainWindow::dragDataRecived(GtkWidget* widget, GdkDragContext* dragContext, gint x, gint y,
 								 GtkSelectionData* data, guint info, guint time, MainWindow* win)
 {
+	XOJ_CHECK_TYPE_OBJ(win, MainWindow);
 
 	GtkWidget* source = gtk_drag_get_source_widget(dragContext);
 	if (source && widget == gtk_widget_get_toplevel(source))
@@ -471,6 +508,9 @@ void MainWindow::updateScrollbarSidebarPosition()
 
 		gtk_widget_set_visible(gtk_scrolled_window_get_hscrollbar(scrolledWindow), !(type & SCROLLBAR_HIDE_HORIZONTAL));
 		gtk_widget_set_visible(gtk_scrolled_window_get_vscrollbar(scrolledWindow), !(type & SCROLLBAR_HIDE_VERTICAL));
+
+		gtk_scrolled_window_set_overlay_scrolling(scrolledWindow,
+		                                          !control->getSettings()->isScrollbarFadeoutDisabled());
 	}
 
 	GtkWidget* sidebar = get("sidebar");
@@ -548,17 +588,6 @@ bool MainWindow::deleteEventCallback(GtkWidget* widget, GdkEvent* event, Control
 	control->quit();
 
 	return true;
-}
-
-bool MainWindow::configureEventCallback(GtkWidget* widget, GdkEventConfigure* event, Control* control)
-{
-	control->calcZoomFitSize();
-	ZoomControl *zoom = control->getZoomControl();
-	if(zoom->isZoomFitMode())
-	{
-		zoom->setZoomFitMode(true);
-	}
-	return false;
 }
 
 void MainWindow::setSidebarVisible(bool visible)
@@ -693,6 +722,8 @@ void MainWindow::loadToolbar(ToolbarData* d)
 	{
 		this->toolbar->load(d, this->toolbarWidgets[i], TOOLBAR_DEFINITIONS[i].propName, TOOLBAR_DEFINITIONS[i].horizontal);
 	}
+	
+	this->floatingToolbox->flagRecalculateSizeRequired();	
 }
 
 ToolbarData* MainWindow::getSelectedToolbar()
@@ -805,7 +836,7 @@ void MainWindow::updatePageNumbers(size_t page, size_t pagecount, size_t pdfpage
 	spinPageNo->setPage(page);
 
 	string pdfText;
-	if (pdfpage != size_t_npos)
+	if (pdfpage != npos)
 	{
 		pdfText = string(", ") + FS(_F("PDF Page {1}") % (pdfpage + 1));
 	}
@@ -906,4 +937,16 @@ void MainWindow::setAudioPlaybackPaused(bool paused)
 	XOJ_CHECK_TYPE(MainWindow);
 
 	this->getToolMenuHandler()->setAudioPlaybackPaused(paused);
+}
+
+void MainWindow::loadMainCSS(GladeSearchpath* gladeSearchPath, const gchar* cssFilename)
+{
+	XOJ_CHECK_TYPE(MainWindow);
+
+	string filename = gladeSearchPath->findFile("", cssFilename);
+	GtkCssProvider *provider = gtk_css_provider_new ();
+	gtk_css_provider_load_from_path (provider, filename.c_str(), NULL);
+	gtk_style_context_add_provider_for_screen(gdk_screen_get_default(), GTK_STYLE_PROVIDER(provider),
+											  GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+	g_object_unref(provider);
 }

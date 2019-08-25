@@ -441,12 +441,16 @@ void Document::setPageSize(PageRef p, double width, double height)
 	XOJ_CHECK_TYPE(Document);
 
 	p->setSize(width, height);
+}
 
-	size_t id = indexOf(p);
-	if (id != size_t_npos && id < getPageCount())
-	{
-		this->handler->firePageSizeChanged(id);
-	}
+double Document::getPageWidth(PageRef p)
+{
+	return p->getWidth();
+}
+
+double Document::getPageHeight(PageRef p)
+{
+	return p->getHeight();
 }
 
 /**
@@ -469,7 +473,7 @@ void Document::deletePage(size_t pNr)
 	updateIndexPageNumbers();
 }
 
-void Document::insertPage(PageRef p, size_t position)
+void Document::insertPage(const PageRef& p, size_t position)
 {
 	XOJ_CHECK_TYPE(Document);
 
@@ -478,7 +482,7 @@ void Document::insertPage(PageRef p, size_t position)
 	updateIndexPageNumbers();
 }
 
-void Document::addPage(PageRef p)
+void Document::addPage(const PageRef& p)
 {
 	XOJ_CHECK_TYPE(Document);
 
@@ -487,7 +491,7 @@ void Document::addPage(PageRef p)
 	updateIndexPageNumbers();
 }
 
-size_t Document::indexOf(PageRef page)
+size_t Document::indexOf(const PageRef& page)
 {
 	XOJ_CHECK_TYPE(Document);
 
@@ -500,7 +504,7 @@ size_t Document::indexOf(PageRef page)
 		}
 	}
 
-	return size_t_npos;
+	return npos;
 }
 
 PageRef Document::getPage(size_t page)
@@ -511,7 +515,7 @@ PageRef Document::getPage(size_t page)
 	{
 		return NULL;
 	}
-	if (page == size_t_npos)
+	if (page == npos)
 	{
 		return NULL;
 	}
@@ -533,7 +537,7 @@ XojPdfDocument& Document::getPdfDocument()
 	return this->pdfDocument;
 }
 
-void Document::operator=(Document& doc)
+Document& Document::operator=(const Document& doc)
 {
 	XOJ_CHECK_TYPE(Document);
 
@@ -547,9 +551,8 @@ void Document::operator=(Document& doc)
 	this->pdfFilename = doc.pdfFilename;
 	this->filename = doc.filename;
 
-	for (unsigned int i = 0; i < doc.pages.size(); i++)
+	for (const PageRef& p: doc.pages)
 	{
-		PageRef p = doc.pages[i];
 		addPage(p);
 	}
 
@@ -563,6 +566,7 @@ void Document::operator=(Document& doc)
 	{
 		lock();
 	}
+	return *this;
 }
 
 void Document::setCreateBackupOnSave(bool backup)

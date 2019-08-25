@@ -10,11 +10,12 @@
 
 #include <XojMsgBox.h>
 #include <i18n.h>
+#include <util/cpp14memory.h>
 
 
 PageBackgroundChangeController::PageBackgroundChangeController(Control* control)
- : control(control),
-   currentPageType(new PageTypeMenu(control->getPageTypes(), control->getSettings(), false, true))
+ : control(control)
+ , currentPageType(new PageTypeMenu(control->getPageTypes(), control->getSettings(), false, true))
 {
 	XOJ_INIT_TYPE(PageBackgroundChangeController);
 
@@ -32,7 +33,7 @@ PageBackgroundChangeController::~PageBackgroundChangeController()
 	XOJ_CHECK_TYPE(PageBackgroundChangeController);
 
 	delete this->currentPageType;
-	this->currentPageType = NULL;
+	this->currentPageType = nullptr;
 
 	XOJ_RELEASE_TYPE(PageBackgroundChangeController);
 }
@@ -52,7 +53,7 @@ void PageBackgroundChangeController::changeAllPagesBackground(PageType pt)
 
 	Document* doc = control->getDocument();
 
-	GroupUndoAction* groupUndoAction = new GroupUndoAction();
+	auto groupUndoAction = mem::make_unique<GroupUndoAction>();
 
 	for (size_t p = 0; p < doc->getPageCount(); p++)
 	{
@@ -76,11 +77,12 @@ void PageBackgroundChangeController::changeAllPagesBackground(PageType pt)
 		control->firePageChanged(p);
 		control->updateBackgroundSizeButton();
 
-		UndoAction* undo = new PageBackgroundChangedUndoAction(page, origType, origPdfPage, origBackgroundImage, origW, origH);
+		UndoAction* undo =
+		        new PageBackgroundChangedUndoAction(page, origType, origPdfPage, origBackgroundImage, origW, origH);
 		groupUndoAction->addAction(undo);
 	}
 
-	control->getUndoRedoHandler()->addUndoAction(groupUndoAction);
+	control->getUndoRedoHandler()->addUndoAction(std::move(groupUndoAction));
 }
 
 void PageBackgroundChangeController::changeCurrentPageBackground(PageTypeInfo* info)
@@ -109,9 +111,9 @@ void PageBackgroundChangeController::changeCurrentPageBackground(PageType& pageT
 
 	Document* doc = control->getDocument();
 	size_t pageNr = doc->indexOf(page);
-	if (pageNr == size_t_npos)
+	if (pageNr == npos)
 	{
-		return; // should not happen...
+		return;  // should not happen...
 	}
 
 	// Get values for Undo / Redo
@@ -126,9 +128,8 @@ void PageBackgroundChangeController::changeCurrentPageBackground(PageType& pageT
 
 	control->firePageChanged(pageNr);
 	control->updateBackgroundSizeButton();
-
-	UndoAction* undo = new PageBackgroundChangedUndoAction(page, origType, origPdfPage, origBackgroundImage, origW, origH);
-	control->getUndoRedoHandler()->addUndoAction(undo);
+	control->getUndoRedoHandler()->addUndoAction(mem::make_unique<PageBackgroundChangedUndoAction>(
+	        page, origType, origPdfPage, origBackgroundImage, origW, origH));
 }
 
 /**
@@ -152,14 +153,14 @@ bool PageBackgroundChangeController::applyImageBackground(PageRef page)
 	if (!img.isEmpty())
 	{
 		page->setBackgroundImage(img);
-		page->setBackgroundType(PageType(":image"));
+		page->setBackgroundType(PageType(PageTypeFormat::Image));
 	}
 	else if (dlg.shouldShowFilechooser())
 	{
 		bool attach = false;
 		GFile* file = ImageOpenDlg::show(control->getGtkWindow(), control->getSettings(), true, &attach);
 		string filename;
-		if (file == NULL)
+		if (file == nullptr)
 		{
 			// The user canceled
 			return false;
@@ -169,25 +170,26 @@ bool PageBackgroundChangeController::applyImageBackground(PageRef page)
 			char* name = g_file_get_path(file);
 			filename = name;
 			g_free(name);
-			name = NULL;
+			name = nullptr;
 			g_object_unref(file);
-			file = NULL;
+			file = nullptr;
 		}
 
 		BackgroundImage newImg;
-		GError* err = NULL;
+		GError* err = nullptr;
 		newImg.loadFile(filename, &err);
 		newImg.setAttach(attach);
 		if (err)
 		{
-			XojMsgBox::showErrorToUser(control->getGtkWindow(), FS(_F("This image could not be loaded. Error message: {1}") % err->message));
+			XojMsgBox::showErrorToUser(control->getGtkWindow(),
+			                           FS(_F("This image could not be loaded. Error message: {1}") % err->message));
 			g_error_free(err);
 			return false;
 		}
 		else
 		{
 			page->setBackgroundImage(newImg);
-			page->setBackgroundType(PageType(":image"));
+			page->setBackgroundType(PageType(PageTypeFormat::Image));
 		}
 	}
 
@@ -198,7 +200,7 @@ bool PageBackgroundChangeController::applyImageBackground(PageRef page)
 		page->setSize(gdk_pixbuf_get_width(pixbuf), gdk_pixbuf_get_height(pixbuf));
 
 		size_t pageNr = doc->indexOf(page);
-		if (pageNr != size_t_npos)
+		if (pageNr != npos)
 		{
 			// Only if the page is already inserted into the document
 			control->firePageSizeChanged(pageNr);
@@ -223,7 +225,7 @@ bool PageBackgroundChangeController::applyPdfBackground(PageRef page)
 	{
 
 		string msg = _("You don't have any PDF pages to select from. Cancel operation.\n"
-					   "Please select another background type: Menu \"Journal\" → \"Configure Page Template\".");
+		               "Please select another background type: Menu \"Journal\" → \"Configure Page Template\".");
 		XojMsgBox::showErrorToUser(control->getGtkWindow(), msg);
 		return false;
 	}
@@ -325,7 +327,7 @@ void PageBackgroundChangeController::insertNewPage(size_t position)
 	PageRef current = control->getCurrentPage();
 
 	// current.isValid() should always be true, but if you open an invalid file or something like this...
-	if (pt.format == ":copy" && current.isValid())
+	if (pt.format == PageTypeFormat::Copy && current.isValid())
 	{
 		copyBackgroundFromOtherPage(page, current);
 	}
@@ -398,5 +400,3 @@ void PageBackgroundChangeController::applyCurrentPageBackground(bool allPages)
 		changeCurrentPageBackground(&info);
 	}
 }
-
-

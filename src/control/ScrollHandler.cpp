@@ -22,23 +22,7 @@ void ScrollHandler::goToPreviousPage()
 
 	if (this->control->getWindow())
 	{
-		if (this->control->getSettings()->isPresentationMode())
-		{
-			XojPageView* view = this->control->getWindow()->getXournal()->getViewFor(this->control->getWindow()->getXournal()->getCurrentPage() - 1);
-			if (view)
-			{
-				double dHeight = view->getDisplayHeight();
-				double disHeight = 0;
-				double top = (dHeight - disHeight)/2.0 + 7.5;
-
-				// the magic 7.5 is from XOURNAL_PADDING_BETWEEN/2
-				scrollToPage(this->control->getWindow()->getXournal()->getCurrentPage() - 1, top);
-			}
-		}
-		else
-		{
-			scrollToPage(this->control->getWindow()->getXournal()->getCurrentPage() - 1);
-		}
+		scrollToPage(this->control->getWindow()->getXournal()->getCurrentPage() - 1);
 	}
 }
 
@@ -48,25 +32,7 @@ void ScrollHandler::goToNextPage()
 
 	if (this->control->getWindow())
 	{
-		if (this->control->getSettings()->isPresentationMode())
-		{
-			XojPageView* view = this->control->getWindow()->getXournal()->getViewFor(this->control->getWindow()->getXournal()->getCurrentPage() + 1);
-			if (view)
-			{
-				double dHeight = view->getDisplayHeight();
-				double disHeight = this->control->getWindow()->getLayout()->getLayoutHeight();
-
-				// this gets reversed when we are going down if the page is smaller than the display height
-				double top = (-dHeight + disHeight)/2.0 - 7.5;
-
-				// the magic 7.5 is from XOURNAL_PADDING_BETWEEN/2
-				scrollToPage(this->control->getWindow()->getXournal()->getCurrentPage() + 1, top);
-			}
-		}
-		else
-		{
-			scrollToPage(this->control->getWindow()->getXournal()->getCurrentPage() + 1);
-		}
+		scrollToPage(this->control->getWindow()->getXournal()->getCurrentPage() + 1);
 	}
 }
 
@@ -90,7 +56,7 @@ void ScrollHandler::goToFirstPage()
 	}
 }
 
-void ScrollHandler::scrollToPage(PageRef page, double top)
+void ScrollHandler::scrollToPage(const PageRef& page, double top)
 {
 	XOJ_CHECK_TYPE(ScrollHandler);
 
@@ -120,7 +86,7 @@ void ScrollHandler::scrollToPage(size_t page, double top)
 	win->getXournal()->scrollTo(page, top);
 }
 
-void ScrollHandler::scrollToSpinPange()
+void ScrollHandler::scrollToSpinPage()
 {
 	XOJ_CHECK_TYPE(ScrollHandler);
 
@@ -150,8 +116,8 @@ void ScrollHandler::scrollToAnnotatedPage(bool next)
 
 	Document* doc = this->control->getDocument();
 
-	for (size_t i = this->control->getCurrentPageNo() + step; i != size_t_npos && i < doc->getPageCount();
-		 i = ((i == 0 && step == -1) ? size_t_npos : i + step))
+	for (size_t i = this->control->getCurrentPageNo() + step; i != npos && i < doc->getPageCount();
+	     i = ((i == 0 && step == -1) ? npos : i + step))
 	{
 		if (doc->getPage(i)->isAnnotated())
 		{
@@ -181,5 +147,5 @@ void ScrollHandler::pageChanged(size_t page)
 {
 	XOJ_CHECK_TYPE(ScrollHandler);
 
-	scrollToSpinPange();
+	scrollToSpinPage();
 }

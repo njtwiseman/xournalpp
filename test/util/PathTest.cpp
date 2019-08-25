@@ -50,7 +50,7 @@ public:
 	{
 		Path b = Path::fromUri("file:///tmp/test.txt");
 		CPPUNIT_ASSERT_EQUAL(false, b.isEmpty());
-		CPPUNIT_ASSERT_EQUAL(string("/tmp/test.txt"), b.str());
+		CPPUNIT_ASSERT_EQUAL(G_DIR_SEPARATOR_S + string("tmp") + G_DIR_SEPARATOR_S + string("test.txt"), b.str());
 	}
 
 	void testParentPath()
@@ -96,6 +96,8 @@ public:
 		Path b = Path("/test/asdf.TXT");
 		b.clearExtensions();
 		CPPUNIT_ASSERT_EQUAL(string("/test/asdf.TXT"), b.str());
+		b.clearExtensions(".txt");
+		CPPUNIT_ASSERT_EQUAL(string("/test/asdf"), b.str());
 
 		b = Path("/test/asdf.asdf/asdf");
 		b.clearExtensions();
@@ -103,19 +105,58 @@ public:
 
 		b = Path("/test/asdf.PDF");
 		b.clearExtensions();
+		CPPUNIT_ASSERT_EQUAL(string("/test/asdf.PDF"), b.str());
+		b.clearExtensions(".pdf");
 		CPPUNIT_ASSERT_EQUAL(string("/test/asdf"), b.str());
 
 		b = Path("/test/asdf.PDF.xoj");
 		b.clearExtensions();
+		CPPUNIT_ASSERT_EQUAL(string("/test/asdf.PDF"), b.str());
+
+		b = Path("/test/asdf.PDF.xoj");
+		b.clearExtensions(".Pdf");
+		CPPUNIT_ASSERT_EQUAL(string("/test/asdf"), b.str());
+
+		b = Path("/test/asdf.pdf.pdf");
+		b.clearExtensions(".pdf");
+		CPPUNIT_ASSERT_EQUAL(string("/test/asdf.pdf"), b.str());
+
+		b = Path("/test/asdf.xopp.xopp");
+		b.clearExtensions();
+		CPPUNIT_ASSERT_EQUAL(string("/test/asdf.xopp"), b.str());
+
+		b = Path("/test/asdf.PDF.xopp");
+		b.clearExtensions();
+		CPPUNIT_ASSERT_EQUAL(string("/test/asdf.PDF"), b.str());
+
+		b = Path("/test/asdf.SVG.xopp");
+		b.clearExtensions(".svg");
 		CPPUNIT_ASSERT_EQUAL(string("/test/asdf"), b.str());
 
 		b = Path("/test/asdf.xoj");
 		b.clearExtensions();
 		CPPUNIT_ASSERT_EQUAL(string("/test/asdf"), b.str());
 
-		b = Path("/test/asdf.pdf");
+		b = Path("/test/asdf.xopp");
 		b.clearExtensions();
 		CPPUNIT_ASSERT_EQUAL(string("/test/asdf"), b.str());
+
+		b = Path("/test/asdf.pdf");
+		b.clearExtensions();
+		CPPUNIT_ASSERT_EQUAL(string("/test/asdf.pdf"), b.str());
+	}
+
+	void testOperators()
+	{
+		Path a = Path("/test/a");
+		Path b = a / "foo.pdf";
+		CPPUNIT_ASSERT_EQUAL(string("/test/a"), a.str());
+		CPPUNIT_ASSERT_EQUAL(string("/test/foo.pdf"), b.str());
+
+		a /= "bar.pdf";
+		CPPUNIT_ASSERT_EQUAL(string("/test/a/bar.pdf"), a.str());
+		// b should not be affected by a
+		CPPUNIT_ASSERT_EQUAL(string("/test/foo.pdf"), b.str());
 	}
 };
 

@@ -7,17 +7,58 @@
 #include "undo/CopyUndoAction.h"
 #include "undo/SwapUndoAction.h"
 
-#include <i18n.h>
+#include "i18n.h"
+#include "util/cpp14memory.h"
 
 SidebarPreviewPages::SidebarPreviewPages(Control* control, GladeGui* gui, SidebarToolbar* toolbar)
  : SidebarPreviewBase(control, gui, toolbar)
+ , contextMenu(gui->get("sidebarPreviewContextMenu"))
 {
 	XOJ_INIT_TYPE(SidebarPreviewPages);
+
+	// Connect the context menu actions
+	const std::map<std::string, SidebarActions> ctxMenuActions = {
+	        {"sidebarPreviewDuplicate", SIDEBAR_ACTION_COPY},
+	        {"sidebarPreviewDelete", SIDEBAR_ACTION_DELETE},
+	        {"sidebarPreviewMoveUp", SIDEBAR_ACTION_MOVE_UP},
+	        {"sidebarPreviewMoveDown", SIDEBAR_ACTION_MOVE_DOWN},
+	        {"sidebarPreviewNewBefore", SIDEBAR_ACTION_NEW_BEFORE},
+	        {"sidebarPreviewNewAfter", SIDEBAR_ACTION_NEW_AFTER},
+	};
+
+	for (const auto& pair: ctxMenuActions)
+	{
+		GtkWidget* const entry = gui->get(pair.first);
+		g_assert(entry != nullptr);
+
+		// Unfortunately, we need a fairly complicated mechanism to keep track
+		// of which action we want to execute.
+		typedef SidebarPreviewPages::ContextMenuData Data;
+		auto userdata = mem::make_unique<Data>(Data{this->toolbar, pair.second});
+
+		const auto callback =
+		        G_CALLBACK(+[](GtkMenuItem* item, Data* data) { data->toolbar->runAction(data->actions); });
+		const gulong signalId = g_signal_connect(entry, "activate", callback, userdata.get());
+		g_object_ref(entry);
+		this->contextMenuSignals.emplace_back(entry, signalId, std::move(userdata));
+	}
 }
 
 SidebarPreviewPages::~SidebarPreviewPages()
 {
 	XOJ_CHECK_TYPE(SidebarPreviewPages);
+
+	for (const auto& signalTuple: this->contextMenuSignals)
+	{
+		GtkWidget* const widget = std::get<0>(signalTuple);
+		const guint handlerId = std::get<1>(signalTuple);
+		if (g_signal_handler_is_connected(widget, handlerId))
+		{
+			g_signal_handler_disconnect(widget, handlerId);
+		}
+		g_object_unref(widget);
+	}
+
 	XOJ_RELEASE_TYPE(SidebarPreviewPages);
 }
 
@@ -48,7 +89,7 @@ void SidebarPreviewPages::actionPerformed(SidebarActions action)
 	{
 		Document* doc = control->getDocument();
 		PageRef swappedPage = control->getCurrentPage();
-		if (!swappedPage.isValid())
+		if (!swappedPage.isValid() || doc->getPageCount() <= 1)
 		{
 			return;
 		}
@@ -56,7 +97,7 @@ void SidebarPreviewPages::actionPerformed(SidebarActions action)
 		doc->lock();
 		size_t page = doc->indexOf(swappedPage);
 		PageRef otherPage = doc->getPage(page - 1);
-		if (page != size_t_npos)
+		if (page != npos)
 		{
 			doc->deletePage(page);
 			doc->insertPage(swappedPage, page - 1);
@@ -64,7 +105,7 @@ void SidebarPreviewPages::actionPerformed(SidebarActions action)
 		doc->unlock();
 
 		UndoRedoHandler* undo = control->getUndoRedoHandler();
-		undo->addUndoAction(new SwapUndoAction(page - 1, true, swappedPage, otherPage));
+		undo->addUndoAction(mem::make_unique<SwapUndoAction>(page - 1, true, swappedPage, otherPage));
 
 		control->firePageDeleted(page);
 		control->firePageInserted(page - 1);
@@ -73,11 +114,11 @@ void SidebarPreviewPages::actionPerformed(SidebarActions action)
 		control->getScrollHandler()->scrollToPage(page - 1);
 		break;
 	}
-	case SIDEBAR_ACTION_MODE_DOWN:
+	case SIDEBAR_ACTION_MOVE_DOWN:
 	{
 		Document* doc = control->getDocument();
 		PageRef swappedPage = control->getCurrentPage();
-		if (!swappedPage.isValid())
+		if (!swappedPage.isValid() || doc->getPageCount() <= 1)
 		{
 			return;
 		}
@@ -85,7 +126,7 @@ void SidebarPreviewPages::actionPerformed(SidebarActions action)
 		doc->lock();
 		size_t page = doc->indexOf(swappedPage);
 		PageRef otherPage = doc->getPage(page + 1);
-		if (page != size_t_npos)
+		if (page != npos)
 		{
 			doc->deletePage(page);
 			doc->insertPage(swappedPage, page + 1);
@@ -93,7 +134,7 @@ void SidebarPreviewPages::actionPerformed(SidebarActions action)
 		doc->unlock();
 
 		UndoRedoHandler* undo = control->getUndoRedoHandler();
-		undo->addUndoAction(new SwapUndoAction(page, false, swappedPage, otherPage));
+		undo->addUndoAction(mem::make_unique<SwapUndoAction>(page, false, swappedPage, otherPage));
 
 		control->firePageDeleted(page);
 		control->firePageInserted(page + 1);
@@ -120,7 +161,7 @@ void SidebarPreviewPages::actionPerformed(SidebarActions action)
 		doc->unlock();
 
 		UndoRedoHandler* undo = control->getUndoRedoHandler();
-		undo->addUndoAction(new CopyUndoAction(newPage, page + 1));
+		undo->addUndoAction(mem::make_unique<CopyUndoAction>(newPage, page + 1));
 
 		control->firePageInserted(page + 1);
 		control->firePageSelected(page + 1);
@@ -131,7 +172,15 @@ void SidebarPreviewPages::actionPerformed(SidebarActions action)
 	case SIDEBAR_ACTION_DELETE:
 		control->deletePage();
 		break;
+	case SIDEBAR_ACTION_NEW_BEFORE:
+		control->insertNewPage(control->getCurrentPageNo());
+		break;
+	case SIDEBAR_ACTION_NEW_AFTER:
+		control->insertNewPage(control->getCurrentPageNo() + 1);
+		break;
 	default:
+		break;
+	case SIDEBAR_ACTION_NONE:
 		break;
 	}
 }
@@ -171,7 +220,7 @@ void SidebarPreviewPages::pageSizeChanged(size_t page)
 {
 	XOJ_CHECK_TYPE(SidebarPreviewPages);
 
-	if (page == size_t_npos || page >= this->previews.size())
+	if (page == npos || page >= this->previews.size())
 	{
 		return;
 	}
@@ -186,7 +235,7 @@ void SidebarPreviewPages::pageChanged(size_t page)
 {
 	XOJ_CHECK_TYPE(SidebarPreviewPages);
 
-	if (page == size_t_npos || page >= this->previews.size())
+	if (page == npos || page >= this->previews.size())
 	{
 		return;
 	}
@@ -251,13 +300,13 @@ void SidebarPreviewPages::pageSelected(size_t page)
 {
 	XOJ_CHECK_TYPE(SidebarPreviewPages);
 
-	if (this->selectedEntry != size_t_npos && this->selectedEntry < this->previews.size())
+	if (this->selectedEntry != npos && this->selectedEntry < this->previews.size())
 	{
 		this->previews[this->selectedEntry]->setSelected(false);
 	}
 	this->selectedEntry = page;
 
-	if (this->selectedEntry != size_t_npos && this->selectedEntry < this->previews.size())
+	if (this->selectedEntry != npos && this->selectedEntry < this->previews.size())
 	{
 		SidebarPreviewBaseEntry* p = this->previews[this->selectedEntry];
 		p->setSelected(true);
@@ -271,7 +320,7 @@ void SidebarPreviewPages::pageSelected(size_t page)
 
 		if (page != this->previews.size() - 1 && this->previews.size() != 0)
 		{
-			actions |= SIDEBAR_ACTION_MODE_DOWN;
+			actions |= SIDEBAR_ACTION_MOVE_DOWN;
 		}
 
 		if (this->previews.size() != 0)
@@ -289,3 +338,9 @@ void SidebarPreviewPages::pageSelected(size_t page)
 	}
 }
 
+void SidebarPreviewPages::openPreviewContextMenu()
+{
+	XOJ_CHECK_TYPE(SidebarPreviewPages);
+
+	gtk_menu_popup(GTK_MENU(this->contextMenu), nullptr, nullptr, nullptr, nullptr, 3, gtk_get_current_event_time());
+}

@@ -45,14 +45,16 @@ public:
 	XojPdfPageSPtr getPdfPage(size_t page);
 	XojPdfDocument& getPdfDocument();
 
-	void insertPage(PageRef p, size_t position);
-	void addPage(PageRef p);
+	void insertPage(const PageRef& p, size_t position);
+	void addPage(const PageRef& p);
 	PageRef getPage(size_t page);
 	void deletePage(size_t pNr);
 
 	void setPageSize(PageRef p, double width, double height);
+	double getPageWidth(PageRef p);
+	double getPageHeight(PageRef p);
 
-	size_t indexOf(PageRef page);
+	size_t indexOf(const PageRef& page);
 
 	/**
 	 * @return The last error message to show to the user
@@ -62,7 +64,7 @@ public:
 	bool isPdfDocumentLoaded();
 	size_t findPdfPage(size_t pdfPage);
 
-	void operator=(Document& doc);
+	Document& operator=(const Document& doc);
 
 	void setFilename(Path filename);
 	Path getFilename();

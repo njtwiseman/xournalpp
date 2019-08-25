@@ -2,8 +2,8 @@
 
 #include <Util.h>
 
-LineBackgroundPainter::LineBackgroundPainter(bool ruled)
- : ruled(ruled)
+LineBackgroundPainter::LineBackgroundPainter(bool verticalLine)
+ : verticalLine(verticalLine)
 {
 	XOJ_INIT_TYPE(LineBackgroundPainter);
 }
@@ -32,13 +32,13 @@ void LineBackgroundPainter::paint()
 
 	paintBackgroundRuled();
 
-	if (!ruled)
+	if (verticalLine)
 	{
-		paintBackgroundLined();
+		paintBackgroundVerticalLine();
 	}
 }
 
-const double roulingSize = 40;
+const double roulingSize = 60;
 
 void LineBackgroundPainter::paintBackgroundRuled()
 {
@@ -47,7 +47,7 @@ void LineBackgroundPainter::paintBackgroundRuled()
 	Util::cairo_set_source_rgbi(cr, this->foregroundColor1);
 	cairo_set_line_width(cr, lineWidth * lineWidthFactor);
 
-	for (double y = 20; y < height; y += roulingSize)
+	for (double y = 30; y < height; y += roulingSize)
 	{
 		cairo_move_to(cr, 0, y);
 		cairo_line_to(cr, width, y);
@@ -58,16 +58,17 @@ void LineBackgroundPainter::paintBackgroundRuled()
 	Util::cairo_set_source_rgbi(cr, this->foregroundColor2);
 	cairo_set_line_width(cr, lineWidth * lineWidthFactor);
 
-	for (double y = 40; y < height; y += roulingSize)
+	for (double y = 60; y < height; y += roulingSize)
 	{
-		cairo_move_to(cr, 0, y);
-		cairo_line_to(cr, width, y);
+		cairo_move_to(cr, 0, offset);
+		cairo_line_to(cr, width, offset);
+		offset += roulingSize;
 	}
 
 	cairo_stroke(cr);
 }
 
-void LineBackgroundPainter::paintBackgroundLined()
+void LineBackgroundPainter::paintBackgroundVerticalLine()
 {
 	XOJ_CHECK_TYPE(LineBackgroundPainter);
 

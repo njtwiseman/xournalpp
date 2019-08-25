@@ -292,6 +292,11 @@ ActionType ActionType_fromString(string value)
 		return ACTION_RULER;
 	}
 
+	if (value == "ACTION_TOOL_FLOATING_TOOLBOX")
+	{
+		return ACTION_TOOL_FLOATING_TOOLBOX;
+	}
+
 	if (value == "ACTION_TOOL_LINE_STYLE_PLAIN")
 	{
 		return ACTION_TOOL_LINE_STYLE_PLAIN;
@@ -312,9 +317,9 @@ ActionType ActionType_fromString(string value)
 		return ACTION_TOOL_LINE_STYLE_DOT;
 	}
 
-	if (value == "ACTION_SIZE_VERY_THIN")
+	if (value == "ACTION_SIZE_VERY_FINE")
 	{
-		return ACTION_SIZE_VERY_THIN;
+		return ACTION_SIZE_VERY_FINE;
 	}
 
 	if (value == "ACTION_SIZE_FINE")
@@ -352,6 +357,11 @@ ActionType ActionType_fromString(string value)
 		return ACTION_TOOL_ERASER_DELETE_STROKE;
 	}
 
+	if (value == "ACTION_TOOL_ERASER_SIZE_VERY_FINE")
+	{
+		return ACTION_TOOL_ERASER_SIZE_VERY_FINE;
+	}
+
 	if (value == "ACTION_TOOL_ERASER_SIZE_FINE")
 	{
 		return ACTION_TOOL_ERASER_SIZE_FINE;
@@ -367,9 +377,14 @@ ActionType ActionType_fromString(string value)
 		return ACTION_TOOL_ERASER_SIZE_THICK;
 	}
 
-	if (value == "ACTION_TOOL_PEN_SIZE_VERY_THIN")
+	if (value == "ACTION_TOOL_ERASER_SIZE_VERY_THICK")
 	{
-		return ACTION_TOOL_PEN_SIZE_VERY_THIN;
+		return ACTION_TOOL_ERASER_SIZE_VERY_THICK;
+	}
+
+	if (value == "ACTION_TOOL_PEN_SIZE_VERY_FINE")
+	{
+		return ACTION_TOOL_PEN_SIZE_VERY_FINE;
 	}
 
 	if (value == "ACTION_TOOL_PEN_SIZE_FINE")
@@ -402,6 +417,11 @@ ActionType ActionType_fromString(string value)
 		return ACTION_TOOL_PEN_FILL_TRANSPARENCY;
 	}
 
+	if (value == "ACTION_TOOL_HILIGHTER_SIZE_VERY_FINE")
+	{
+		return ACTION_TOOL_HILIGHTER_SIZE_VERY_FINE;
+	}
+
 	if (value == "ACTION_TOOL_HILIGHTER_SIZE_FINE")
 	{
 		return ACTION_TOOL_HILIGHTER_SIZE_FINE;
@@ -415,6 +435,11 @@ ActionType ActionType_fromString(string value)
 	if (value == "ACTION_TOOL_HILIGHTER_SIZE_THICK")
 	{
 		return ACTION_TOOL_HILIGHTER_SIZE_THICK;
+	}
+
+	if (value == "ACTION_TOOL_HILIGHTER_SIZE_VERY_THICK")
+	{
+		return ACTION_TOOL_HILIGHTER_SIZE_VERY_THICK;
 	}
 
 	if (value == "ACTION_TOOL_HILIGHTER_FILL")
@@ -970,6 +995,11 @@ string ActionType_toString(ActionType value)
 		return "ACTION_RULER";
 	}
 
+	if (value == ACTION_TOOL_FLOATING_TOOLBOX)
+	{
+		return "ACTION_TOOL_FLOATING_TOOLBOX";
+	}
+
 	if (value == ACTION_TOOL_LINE_STYLE_PLAIN)
 	{
 		return "ACTION_TOOL_LINE_STYLE_PLAIN";
@@ -990,9 +1020,9 @@ string ActionType_toString(ActionType value)
 		return "ACTION_TOOL_LINE_STYLE_DOT";
 	}
 
-	if (value == ACTION_SIZE_VERY_THIN)
+	if (value == ACTION_SIZE_VERY_FINE)
 	{
-		return "ACTION_SIZE_VERY_THIN";
+		return "ACTION_SIZE_VERY_FINE";
 	}
 
 	if (value == ACTION_SIZE_FINE)
@@ -1030,6 +1060,11 @@ string ActionType_toString(ActionType value)
 		return "ACTION_TOOL_ERASER_DELETE_STROKE";
 	}
 
+	if (value == ACTION_TOOL_ERASER_SIZE_VERY_FINE)
+	{
+		return "ACTION_TOOL_ERASER_SIZE_VERY_FINE";
+	}
+
 	if (value == ACTION_TOOL_ERASER_SIZE_FINE)
 	{
 		return "ACTION_TOOL_ERASER_SIZE_FINE";
@@ -1045,9 +1080,14 @@ string ActionType_toString(ActionType value)
 		return "ACTION_TOOL_ERASER_SIZE_THICK";
 	}
 
-	if (value == ACTION_TOOL_PEN_SIZE_VERY_THIN)
+	if (value == ACTION_TOOL_ERASER_SIZE_VERY_THICK)
 	{
-		return "ACTION_TOOL_PEN_SIZE_VERY_THIN";
+		return "ACTION_TOOL_ERASER_SIZE_VERY_THICK";
+	}
+
+	if (value == ACTION_TOOL_PEN_SIZE_VERY_FINE)
+	{
+		return "ACTION_TOOL_PEN_SIZE_VERY_FINE";
 	}
 
 	if (value == ACTION_TOOL_PEN_SIZE_FINE)
@@ -1080,6 +1120,11 @@ string ActionType_toString(ActionType value)
 		return "ACTION_TOOL_PEN_FILL_TRANSPARENCY";
 	}
 
+	if (value == ACTION_TOOL_HILIGHTER_SIZE_VERY_FINE)
+	{
+		return "ACTION_TOOL_HILIGHTER_SIZE_VERY_FINE";
+	}
+
 	if (value == ACTION_TOOL_HILIGHTER_SIZE_FINE)
 	{
 		return "ACTION_TOOL_HILIGHTER_SIZE_FINE";
@@ -1093,6 +1138,11 @@ string ActionType_toString(ActionType value)
 	if (value == ACTION_TOOL_HILIGHTER_SIZE_THICK)
 	{
 		return "ACTION_TOOL_HILIGHTER_SIZE_THICK";
+	}
+
+	if (value == ACTION_TOOL_HILIGHTER_SIZE_VERY_THICK)
+	{
+		return "ACTION_TOOL_HILIGHTER_SIZE_VERY_THICK";
 	}
 
 	if (value == ACTION_TOOL_HILIGHTER_FILL)
